@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Chaud et Froid</string>
+
+    <string name="start_button_text">Démarchez avec l\'iBeacon choisi</string>
+    <string name="device_selected_default">Non appareil choisi</string>
+    <string name="no_uuid">Pas de uuid</string>
+</resources>

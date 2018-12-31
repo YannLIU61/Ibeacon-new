@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">beacondemojava</string>
+
+    <string name="start_button_text">使用选中的iBeacon设备开始</string>
+    <string name="device_selected_default">没有已选中的设备</string>
+    <string name="no_uuid">无 uuid</string>
+</resources>
