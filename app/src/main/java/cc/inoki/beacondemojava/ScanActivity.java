@@ -17,11 +17,13 @@ import android.os.Handler;
 import android.util.Log;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import cc.inoki.beacondemojava.utils.BeaconRelativeDistanceRssiHelper;
 import cc.inoki.beacondemojava.utils.BeaconRssiHelper;
 import cc.inoki.beacondemojava.utils.PermissionManager;
 
@@ -33,7 +35,6 @@ public class ScanActivity extends Activity implements Runnable{
     private BluetoothManager btManager;
     private BluetoothAdapter btAdapter;
     private Handler scanHandler = new Handler();
-    private BeaconRssiHelper beaconRssiHelper;
 
     // Views
     private FrameLayout layout;
@@ -43,7 +44,6 @@ public class ScanActivity extends Activity implements Runnable{
 
     private String selectedDeviceMacAddress;
     private String selectedDeviceUUID;
-
 
     private double avgDis = 0.0;
     private double dis = 0.0;
@@ -62,7 +62,7 @@ public class ScanActivity extends Activity implements Runnable{
         Log.i(LOG_TAG, "calculating accuracy based on rssi and txPower of "+rssi+" "+ "-65");
 
 
-        double ratio = rssi*1.0/(-65);
+        double ratio = rssi*1.0/(-60);
         if (ratio < 1.0) {
             return Double.parseDouble(df.format(Math.pow(ratio,10)));
         }
@@ -90,91 +90,32 @@ public class ScanActivity extends Activity implements Runnable{
         @Override
         public void onScanResult(int callbackType, ScanResult result) {
             // After the filter, the result will be only our device
+            BeaconRelativeDistanceRssiHelper helper = BeaconRelativeDistanceRssiHelper.getInstance();
 
-            ScanActivity.this.dis = calculateAccuracy(result.getRssi());
+            helper.addRssi(result.getRssi());
 
-            Log.i(LOG_TAG,"Calcule distance: "+ ScanActivity.this.dis);
 
-            if (beaconRssiHelper == null){
-                beaconRssiHelper = new BeaconRssiHelper();
-                beaconRssiHelper.addRssiRecord(result.getRssi());
-                Log.i(LOG_TAG, "RSSI: " + result.getRssi());
+            int relativeDistance = helper.getRelativeDistance();
+
+            Log.i(LOG_TAG, "Mean:" + helper.getBeaconRssiHelper().mean());
+
+            if (BeaconRelativeDistanceRssiHelper.FAR == relativeDistance) {
+                ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorCold));
+            } else if (BeaconRelativeDistanceRssiHelper.NEAR == relativeDistance) {
+                ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorHot));
+            } else if (BeaconRelativeDistanceRssiHelper.NEED_MORE_DATA == relativeDistance) {
+                Log.i(LOG_TAG, "Distance changed, calculating");
+                Toast.makeText(ScanActivity.this, "Distance changed, calculating", Toast.LENGTH_SHORT).show();
+            } else {
+                ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorWhite));
+                Log.i(LOG_TAG, "No change");
             }
-            else {
-                beaconRssiHelper.addRssiRecord(result.getRssi());
-                Log.i(LOG_TAG,"Calcule mean "+ beaconRssiHelper.mean());
-                if (Math.abs(result.getRssi() - beaconRssiHelper.mean()) > 3){
 
-                    if(ScanActivity.this.dis<1.0){
 
-                        if (ScanActivity.this.lastdis > ScanActivity.this.dis + 0.1) {
-                            // Near
-                            ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorHot));
-                            Log.i(LOG_TAG, "Closing in 1m......... ");
-                        } else if (ScanActivity.this.lastdis < ScanActivity.this.dis -0.1) {
-                            // far
-                            ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorCold));
-                            Log.i(LOG_TAG, "Going far still in 1m......... ");
-                        } else {
-                            layout.setBackgroundColor(Color.WHITE);
-                            Log.i(LOG_TAG, "No change <1........");
-                        }
-
-                    }else if(1.0<=ScanActivity.this.dis && ScanActivity.this.dis<10.0){
-                        if (ScanActivity.this.lastdis > ScanActivity.this.dis + 1) {
-                            // Near
-                            ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorHot));
-                            Log.i(LOG_TAG, "Closing in 1 and 10m......... ");
-                        } else if (ScanActivity.this.lastdis < ScanActivity.this.dis -1) {
-                            // far
-                            ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorCold));
-                            Log.i(LOG_TAG, "Going far between 1 and 10 m......... ");
-                        } else {
-                            layout.setBackgroundColor(Color.WHITE);
-                            Log.i(LOG_TAG, "No change 1~10........");
-                        }
-                    }
-                    else if(10.0<=ScanActivity.this.dis && ScanActivity.this.dis<20.0){
-                        if (ScanActivity.this.lastdis > ScanActivity.this.dis + 2.0) {
-                            // Near
-                            ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorHot));
-                            Log.i(LOG_TAG, "Closing in 10 and 20......... ");
-                        } else if (ScanActivity.this.lastdis < ScanActivity.this.dis -2.0) {
-                            // far
-                            ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorCold));
-                            Log.i(LOG_TAG, "Going far between 10 and 20 m......... ");
-                        } else {
-                            layout.setBackgroundColor(Color.WHITE);
-                            Log.i(LOG_TAG, "No change 10~20........");
-                        }
-                    } else{
-                        if (ScanActivity.this.lastdis > ScanActivity.this.dis + 5.0) {
-                            // Near
-                            ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorHot));
-                            Log.i(LOG_TAG, "Closing >20......... ");
-                        } else if (ScanActivity.this.lastdis < ScanActivity.this.dis -5.0) {
-                            // far
-                            ScanActivity.this.layout.setBackgroundColor(getColor(R.color.colorCold));
-                            Log.i(LOG_TAG, "Going far >20......... ");
-                        } else {
-                            layout.setBackgroundColor(Color.WHITE);
-                            Log.i(LOG_TAG, "No change >20........");
-                        }
-                    }
-                    beaconRssiHelper = new BeaconRssiHelper();
-                    beaconRssiHelper.addRssiRecord(result.getRssi());
-                    ScanActivity.this.lastdis = ScanActivity.this.dis;
-
-//                    TextView distance = findViewById(R.id.device_distance);
-//                    distance.setText(String.valueOf( ScanActivity.this.lastdis));
-
-                }
-                else {
-                    Log.i(LOG_TAG, "RSSI: " + result.getRssi() + " Mean: " + beaconRssiHelper.mean());
-                    beaconRssiHelper.addRssiRecord(result.getRssi());
-                    layout.setBackgroundColor(Color.WHITE);
-                }
-            }
+            ScanActivity.this.dis= calculateAccuracy(helper.getBeaconRssiHelper().mean());
+            TextView distance = findViewById(R.id.device_distance);
+            distance.setText("Distance:" + ScanActivity.this.dis  );
+            Log.i(LOG_TAG,"Calcule distance: "+ ScanActivity.this.dis );
         }
     };
 
@@ -238,6 +179,15 @@ public class ScanActivity extends Activity implements Runnable{
         } else {
             if (btAdapter != null) {
                 Log.i(LOG_TAG, "Scan begin for " + this.selectedDeviceMacAddress);
+
+                // Clear BeaconRelativeDistanceRssiHelper, add rules
+                BeaconRelativeDistanceRssiHelper.getInstance().clear().
+                        addRangeToleranceEpsilon(-20000,  -100,20, 10).
+                        addRangeToleranceEpsilon(-100, -80, 12, 5).
+                        addRangeToleranceEpsilon(-80, -60, 15, 6).
+                        addRangeToleranceEpsilon(-60, -40, 18, 7).
+                        addRangeToleranceEpsilon(-40, 1, 20, 8);
+
                 ScanSettings settings = new ScanSettings.Builder()
                         .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
                 List<ScanFilter> filters = new ArrayList<>();

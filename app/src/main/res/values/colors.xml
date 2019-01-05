@@ -6,4 +6,5 @@
 
     <color name="colorCold">#5f0066ff</color>
     <color name="colorHot">#76ff2200</color>
+    <color name="colorWhite">#8fff</color>
 </resources>
